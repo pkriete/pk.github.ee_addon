@@ -35,6 +35,9 @@ class Github {
 	var $ignore = array('commit', 'repository', 'tree');
 	var $nested = array('author' => array('name', 'email'), 'committer' => array('name', 'email'));
 
+	// Use stale cache if github offline?  (also a parameter)
+	var $offline_stale_cache = TRUE;
+
 	/**
 	 * Constructor
 	 *
@@ -60,6 +63,11 @@ class Github {
 		if ($prefix = $TMPL->fetch_param('prefix'))
 		{
 			$this->prefix = $prefix;
+		}
+		
+		if ($offline_stale_cache = $TMPL->fetch_param('offline_stale_cache'))
+		{
+			$this->offline_stale_cache = ($offline_stale_cache == 'yes') ? TRUE : FALSE;
 		}
 		
 		// @todo backspace param?
@@ -694,8 +702,21 @@ class Github {
 		
 		if ($rawxml == '' OR substr($rawxml, 0, 5) != "<?xml")
 		{
-			$TMPL->log_item("Github Error: Unable to retrieve data from: ".$url);
-			return FALSE;
+			// Attempt to use a stale cache?
+			if ($this->offline_stale_cache)
+			{
+				$rawxml = $this->_check_cache($url, TRUE);
+			}
+			
+			if ($rawxml == '' OR substr($rawxml, 0, 5) != "<?xml")
+			{
+				$TMPL->log_item("Github Error: Unable to retrieve data from: ".$url);
+				return FALSE;
+			}
+			
+			// Yucky - stale
+			$TMPL->log_item("Github Stale Cache: ".$url);
+			$cache_expired = FALSE;
 		}
 		
 		// Write the cache file if necessary
@@ -800,7 +821,7 @@ class Github {
 	 * @param	string
 	 * @return	mixed - string if pulling from cache, FALSE if not
 	 */
-	function _check_cache($url)
+	function _check_cache($url, $force = FALSE)
 	{	
 		global $TMPL;
 
@@ -831,7 +852,7 @@ class Github {
 		{
 			$TMPL->log_item("Corrupt Github Cache File: ".$file);
 		}
-		elseif (time() < ($timestamp + ($this->refresh * 60)))
+		elseif (time() < ($timestamp + ($this->refresh * 60)) OR $force)
 		{
 			$cache = @fread($fp, filesize($file));
 			$cache = trim($cache);

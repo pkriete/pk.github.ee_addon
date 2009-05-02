@@ -12,6 +12,8 @@ Global Parameter:
 							{exp:github:user username="bob" prefix="github-user-"}
 								{github-user-location}
 							{/exp:github:user}
+							
+	- offline_stale_cache	Attempt to use a stale cache if Github is offline (defaults to yes)
 
 exp:github:user
 	Parameters
