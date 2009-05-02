@@ -1,0 +1,100 @@
+=== GITHUB PLUGIN USAGE ===
+
+Global Parameter:
+
+	- username			Always required - github handle
+
+	- refresh			Cache refresh time - defaults to 30 (minutes)
+						Github API Limit: 60 req/min
+
+	- prefix			Optional variable prefix to avoid conflicts
+						Example: {location} (an EE global):
+							{exp:github:user username="bob" prefix="github-user-"}
+								{github-user-location}
+							{/exp:github:user}
+
+exp:github:user
+	Parameters
+		- username
+
+	Variables
+		- {name}
+		- {company}
+		- {location}
+		- {email}
+		- {blog}
+		- {following-count}
+		- {followers-count}
+		- {public-repo-count}
+		- {public-gist-count}
+
+
+exp:github:user_repos
+	Parameters
+		- username
+	
+	Variables
+		- {description}
+		- {name}
+		- {forks}			- fork count
+		- {watchers}
+		- {owner}
+		- {homepage}
+		- {url}
+		- {count}
+		- {switch="a|b"}
+
+exp:github:commits
+	Parameters
+		- username
+		- repository
+		- branch		(defaults to master)
+		- path			(defaults to /)
+		- commit		(sha value - shows single commit)
+		- limit			(number of commits to show - cannot be used with "commit")
+	
+	Variables
+		- {message}
+		- {author-name}
+		- {author-email}
+		- {committed-date}
+		- {authored-date}
+		- {committer-name}
+		- {commiter-email}
+		- {count}
+		- {switch="a|b"}
+
+
+exp:github:repository
+	Parameters
+		- username
+		- repository
+
+	Variables
+		- {name}
+		- {description}
+		- {forks}
+		- {watchers}
+		- {url}
+		- {owner}
+		- {homepage}
+
+
+// Not Implemented:
+
+exp:github:issues
+	Parameters:
+		- username
+		- repository
+		- state			(open|closed)
+		- number		(show a single issue)
+		- count
+		
+	Variables:
+		- {number}
+		- {title}
+		- {body}
+		- {user}
+		- {votes}
+		- {created_at}
+		- {updated_at}
