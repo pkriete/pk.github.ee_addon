@@ -17,8 +17,8 @@ $plugin_info = array(
  * @author			Pascal Kriete
  * @link			@todo
  *
- * Built on the twitter timeline plugin by Derek Jones
- * Saved me some fsockopen / localize work
+ * Loosely built on the twitter timeline plugin by Derek Jones
+ * Saved me some fsockopen / caching / localize work
  */
 class Github {
 	
@@ -32,7 +32,7 @@ class Github {
 	var $prefix			= '';		// github vars are very generic, so use this to avoid conflicts (also a parameter)
 	
 	// Used by _parse_xml to clean up the returned array
-	var $ignore = array('commit', 'repository');
+	var $ignore = array('commit', 'repository', 'tree');
 	var $nested = array('author' => array('name', 'email'), 'committer' => array('name', 'email'));
 
 	/**
@@ -209,6 +209,138 @@ class Github {
 		}
 		
 		return $tagdata;
+	}
+	
+	
+	// --------------------------------------------------------------------
+	
+	/**
+	 * exp:github:tree
+	 *
+	 * Get tree information
+	 *
+	 * @access	public
+	 * @return	string
+	 * @link	http://develop.github.com/p/object.html#trees
+	 */
+	function tree()
+	{
+		global $TMPL, $FNS;
+		
+		/*
+		exp:github:tree
+
+		Parameters
+			- username
+			- repository
+			- tree
+			- limit
+			- show_hidden
+
+		Variables
+			- {name}
+			- {sha}
+			- {mode}
+			- {type}
+			- {count}
+			- {switch="a|b"}
+
+		*/
+
+		// Fetch parameters
+		
+		$repository	= $TMPL->fetch_param('repository');
+		$tree		= $TMPL->fetch_param('tree');
+		$limit		= (($tmp = $TMPL->fetch_param('limit')) === FALSE) ? $this->limit : $tmp;
+
+		if ( ! $show_hidden = $TMPL->fetch_param('show_hidden'))
+		{
+			$show_hidden = ($show_hidden == 'yes') ? TRUE : FALSE;
+		}
+
+		if ( ! $repository)
+		{
+			$TMPL->log_item("Github Plugin: tree tag requires repository parameter.");
+			return '';
+		}
+		if ( ! $tree OR strlen($tree) != 40)
+		{
+			$TMPL->log_item("Github Plugin: invalid tree hash.");
+			return '';
+		}
+
+		// Fetch the data
+		
+		$url = "tree/show/{$this->username}/{$repository}/{$tree}";
+
+		$tree_data = $this->_fetch_data($url);
+
+		if ( ! $tree_data)
+		{
+			$TMPL->log_item("Github Plugin: unable to fetch tree data.");
+			return '';
+		}
+
+		// Parse the data
+
+		$output = '';
+		$count = 0;
+
+		foreach($tree_data as $tree)
+		{
+			$tagdata = $TMPL->tagdata;
+			
+			if ($show_hidden == FALSE && isset($tree['name']) && $tree['name'][0] == '.')
+			{
+				continue;
+			}
+			
+			if ($count >= $limit)
+			{
+				return $output;
+			}
+			
+			// Make {count} available - +1 due to zero indexed arrays
+			$tree[$this->prefix.'count'] = $count++;
+			
+			// Conditionals
+			$tagdata = $FNS->prep_conditionals($tagdata, $tree);
+			
+			foreach($TMPL->var_single as $var_key => $var_val)
+			{
+				// Parse switch
+				
+				if (preg_match("/^".$this->prefix."switch\s*=.+/i", $var_key))
+				{
+					$sparam = $FNS->assign_parameters($var_key);
+					
+					$sw = '';
+					
+					if (isset($sparam[$this->prefix.'switch']))
+					{
+						$sopt = explode("|", $sparam[$this->prefix.'switch']);
+
+						$sw = $sopt[($count-1 + count($sopt)) % count($sopt)];
+					}
+					
+					$tagdata = $TMPL->swap_var_single($var_key, $sw, $tagdata);
+				}
+				
+				// the main keys are easy
+				if (isset($tree[$var_key]))
+				{
+					$tagdata = $TMPL->swap_var_single($var_key, $tree[$var_key], $tagdata);	
+				}
+				else
+				{
+					$tagdata = $TMPL->swap_var_single($var_key, '', $tagdata);
+				}
+			}
+			
+			$output .= $tagdata;
+		}
+		
+		return $output;
 	}
 	
 	// --------------------------------------------------------------------

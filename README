@@ -80,6 +80,22 @@ exp:github:repository
 		- {homepage}
 
 
+exp:github:tree
+	Parameters
+		- username
+		- repository
+		- tree
+		- limit
+		- show_hidden
+	
+	Variables
+		- {name}
+		- {sha}
+		- {mode}
+		- {type}
+		- {count}
+		- {switch="a|b"}
+
 // Not Implemented:
 
 exp:github:issues
